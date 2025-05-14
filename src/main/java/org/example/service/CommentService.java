@@ -1,34 +1,57 @@
-package servlet;
+package org.example.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import model.Comment;
-import service.CommentService;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import org.example.model.Comment;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
-import java.io.IOException;
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
+import java.util.List;
 
-@WebServlet("/comment")
-public class CommentServlet extends HttpServlet {
+public class CommentService {
 
-    private final CommentService commentService = CommentService.getInstance();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final CommentService instance = new CommentService();
+    private final EntityManagerFactory emf = Persistence.createEntityManagerFactory("AnonbookPU");
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+    private CommentService() {}
 
-        Comment comment = objectMapper.readValue(req.getInputStream(), Comment.class);
+    public static CommentService getInstance() {
+        return instance;
+    }
 
-        // Timestamp-ის დამატება ავტომატურად
-        comment.setTimestamp(LocalDateTime.now());
+    public void save(Comment comment) {
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
 
-        commentService.save(comment);
+        try {
+            tx.begin();
+            em.persist(comment);
+            tx.commit();
+        } catch (Exception e) {
+            if (tx.isActive()) tx.rollback();
+            e.printStackTrace();
+        } finally {
+            em.close();
+        }
+    }
 
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentType("application/json");
-        resp.getWriter().write("{\"message\": \"Comment added successfully\"}");
+    public List<Object> getCommentsByPostId(Long postId) {
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<Object> cq = cb.createQuery();
+            Root<Comment> root = cq.from(Comment.class);
+            cq.select(root).where(cb.equal(root.get("postId"), postId));
+            ((CriteriaQuery<?>) cq).orderBy(cb.asc(root.get("timestamp")));
+
+            return em.createQuery(cq).getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public void close() {
+        emf.close();
     }
 }

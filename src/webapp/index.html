@@ -1,10 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>Anonbook - Posts</title>
 </head>
 <body>
-$END$
+<h1>All Posts</h1>
+
+<div id="posts"></div>
+
+<h2>Add a new post</h2>
+<form id="postForm" enctype="multipart/form-data">
+    <label>Text: <input type="text" name="text" required></label><br>
+    <label>Image: <input type="file" name="image" accept="image/jpeg"></label><br>
+    <button type="submit">Submit</button>
+</form>
+
+<script>
+    async function loadPosts() {
+        const res = await fetch('/post');
+        const posts = await res.json();
+        const container = document.getElementById('posts');
+        container.innerHTML = '';
+        posts.forEach(p => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <p>${p.text}</p>
+                ${p.imagePath ? `<img src="/images/${p.imagePath}" width="150">` : ''}
+                <br><a href="post.html?postId=${p.id}">View Post</a>
+                <hr>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('postForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        await fetch('/post', {
+            method: 'POST',
+            body: formData
+        });
+        e.target.reset();
+        loadPosts();
+    });
+
+    loadPosts();
+</script>
 </body>
 </html>

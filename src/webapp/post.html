@@ -1,10 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>Anonbook - View Post</title>
 </head>
 <body>
-$END$
+<div id="post"></div>
+<h3>Comments</h3>
+<div id="comments"></div>
+
+<h4>Add a Comment</h4>
+<form id="commentForm">
+    <input type="text" name="text" required>
+    <button type="submit">Submit</button>
+</form>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('postId');
+
+    async function loadPost() {
+        const res = await fetch(`/post?id=${postId}`);
+        const post = await res.json();
+        const container = document.getElementById('post');
+        container.innerHTML = `
+            <h2>Post</h2>
+            <p>${post.text}</p>
+            ${post.imagePath ? `<img src="/images/${post.imagePath}" width="200">` : ''}
+            <hr>
+        `;
+    }
+
+    async function loadComments() {
+        const res = await fetch(`/comment?postId=${postId}`);
+        const comments = await res.json();
+        const container = document.getElementById('comments');
+        container.innerHTML = '';
+        comments.forEach(c => {
+            const div = document.createElement('div');
+            div.innerHTML = `<p>${c.text} (${c.timestamp})</p><hr>`;
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('commentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        formData.append('postId', postId);
+        await fetch('/comment', {
+            method: 'POST',
+            body: new URLSearchParams([...formData])
+        });
+        e.target.reset();
+        loadComments();
+    });
+
+    loadPost();
+    loadComments();
+</script>
 </body>
 </html>
